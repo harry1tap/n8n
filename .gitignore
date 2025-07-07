@@ -41,5 +41,10 @@ next-env.d.ts
 .vscode
 supabase/.temp
 
-# pnpm
+# lockfiles - force npm usage
 pnpm-lock.yaml
+yarn.lock
+
+# package manager files
+.pnpm-store
+.yarn

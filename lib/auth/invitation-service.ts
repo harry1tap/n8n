@@ -22,10 +22,17 @@ export interface InvitationData {
 
 export class InvitationService {
   static async createInvitation(data: CreateInvitationData) {
+    // Get current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("Not authenticated")
+
+    // Create invitation using the database function
     const { data: result, error } = await supabase.rpc("create_invitation", {
       p_email: data.email,
       p_role: data.role,
-      p_invited_by: (await supabase.auth.getUser()).data.user?.id,
+      p_invited_by: user.id,
     })
 
     if (error) throw error
@@ -43,7 +50,8 @@ export class InvitationService {
     })
 
     if (!response.ok) {
-      throw new Error("Failed to send invitation email")
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to send invitation email")
     }
 
     return result
@@ -52,12 +60,10 @@ export class InvitationService {
   static async getInvitations() {
     const { data, error } = await supabase
       .from("invitations")
-      .select(
-        `
+      .select(`
         *,
         invited_by:profiles!invitations_invited_by_fkey(email, full_name)
-      `,
-      )
+      `)
       .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -77,16 +83,17 @@ export class InvitationService {
     return data
   }
 
-  static async acceptInvitation(token: string, password: string) {
+  static async acceptInvitation(token: string, password: string, fullName: string) {
     // First verify the invitation
     const invitation = await this.getInvitationByToken(token)
 
-    // Create the user account
+    // Create the user account in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: invitation.email,
       password,
       options: {
         data: {
+          full_name: fullName,
           invitation_token: token,
         },
       },
@@ -98,9 +105,14 @@ export class InvitationService {
   }
 
   static async deactivateUser(userId: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("Not authenticated")
+
     const { data, error } = await supabase.rpc("deactivate_user", {
       p_user_id: userId,
-      p_admin_id: (await supabase.auth.getUser()).data.user?.id,
+      p_admin_id: user.id,
     })
 
     if (error) throw error

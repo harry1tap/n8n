@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { FileText, TrendingUp, Users, Target } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
 
 const monthlyData = [
   { month: "Jan", articles: 45, clients: 12 },
@@ -19,9 +20,26 @@ const articleTypeData = [
 ]
 
 export function DashboardOverview() {
-  const totalArticles = monthlyData.reduce((sum, month) => sum + month.articles, 0)
-  const totalClients = Math.max(...monthlyData.map((month) => month.clients))
-  const avgArticlesPerMonth = Math.round(totalArticles / monthlyData.length)
+  const { user } = useAuth()
+
+  // Get user role from user metadata or determine from email
+  const userRole = user?.user_metadata?.role || (user?.email?.includes("admin") ? "admin" : "user")
+  const userEmail = user?.email || ""
+
+  // Filter data based on user role
+  const filteredMonthlyData =
+    userRole === "admin"
+      ? monthlyData
+      : monthlyData.map((month) => ({
+          ...month,
+          // For users, show only their assigned projects (mock data for now)
+          articles: Math.floor(month.articles * 0.3), // Simulate user's portion
+          clients: Math.floor(month.clients * 0.2),
+        }))
+
+  const totalArticles = filteredMonthlyData.reduce((sum, month) => sum + month.articles, 0)
+  const totalClients = Math.max(...filteredMonthlyData.map((month) => month.clients))
+  const avgArticlesPerMonth = Math.round(totalArticles / filteredMonthlyData.length)
 
   return (
     <div className="space-y-8 w-full">
@@ -94,7 +112,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={filteredMonthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" />
                 <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
                 <YAxis stroke="#9CA3AF" fontSize={12} />

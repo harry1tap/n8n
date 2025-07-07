@@ -84,9 +84,9 @@ export function ProjectsList() {
 
     // Filter projects based on user role
     if (role === "admin") {
-      setProjects(mockProjects)
+      setProjects(mockProjects) // Admins see all projects
     } else {
-      // Staff can only see their own projects
+      // Users only see their assigned projects
       const userProjects = mockProjects.filter((project) => project.assignedTo === email)
       setProjects(userProjects)
     }

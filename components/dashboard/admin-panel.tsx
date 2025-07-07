@@ -100,64 +100,12 @@ export function AdminPanel() {
       console.log("🚀 Starting user creation process...")
       console.log("📝 Form data:", { email: newUserEmail, fullName: newUserName, role: newUserRole })
 
-      // Check if user is authenticated first
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-      console.log("👤 Current user:", user?.email, "Error:", authError)
-
-      if (!user) {
-        throw new Error("You must be logged in to create users")
-      }
-
-      // Check if user has admin role
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
-
-      console.log("🔐 User profile:", profile, "Error:", profileError)
-
-      if (profile?.role !== "admin") {
-        throw new Error("You must be an admin to create users")
-      }
-
-      console.log("📡 Calling Edge Function...")
-
-      // Call the Edge Function with detailed logging
-      const { data: result, error: functionError } = await supabase.functions.invoke("create-user-with-credentials", {
-        body: {
-          email: newUserEmail,
-          fullName: newUserName,
-          role: newUserRole,
-        },
+      // Use the updated invitation service
+      const result = await InvitationService.createUserWithCredentials({
+        email: newUserEmail,
+        fullName: newUserName,
+        role: newUserRole,
       })
-
-      console.log("📨 Edge Function response:", { result, error: functionError })
-      console.log("📨 Full response details:", JSON.stringify({ result, functionError }, null, 2))
-
-      if (functionError) {
-        console.error("❌ Edge function error:", functionError)
-
-        // Provide more specific error messages
-        if (functionError.message?.includes("FunctionsRelayError")) {
-          throw new Error("Edge Function is not deployed or not accessible. Please check the deployment.")
-        } else if (functionError.message?.includes("FunctionsFetchError")) {
-          throw new Error("Failed to connect to Edge Function. Please check your network connection.")
-        } else {
-          throw new Error(`Edge Function error: ${functionError.message}`)
-        }
-      }
-
-      if (!result) {
-        throw new Error("No response received from Edge Function")
-      }
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to create user")
-      }
 
       console.log("✅ User created successfully:", result)
 
@@ -181,17 +129,6 @@ export function AdminPanel() {
       console.error("💥 Error creating user:", error)
       setError(error.message || "Failed to create user")
       setCreateStatus("error")
-
-      // Provide helpful error messages based on the error type
-      if (error.message.includes("not deployed")) {
-        setError("❌ Edge Function not deployed. Please run the deployment script first.")
-      } else if (error.message.includes("admin")) {
-        setError("❌ You don't have admin permissions to create users.")
-      } else if (error.message.includes("already exists")) {
-        setError("❌ A user with this email already exists.")
-      } else if (error.message.includes("network") || error.message.includes("fetch")) {
-        setError("❌ Network error. Please check your internet connection and try again.")
-      }
     }
   }
 
@@ -301,11 +238,18 @@ export function AdminPanel() {
             onClick={async () => {
               try {
                 console.log("🧪 Testing Edge Function connection...")
-                const { data, error } = await supabase.functions.invoke("create-user-with-credentials", {
-                  body: { test: true },
+                const response = await fetch("/api/create-user-with-credentials", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ test: true }),
                 })
-                console.log("🧪 Test result:", { data, error })
-                alert(`Test result: ${error ? `Error: ${error.message}` : "Function accessible!"}`)
+                const data = await response.json()
+                console.log("🧪 Test result:", { status: response.status, data })
+                alert(
+                  `Test result: ${response.ok ? "✅ Function accessible!" : `❌ Error: ${data.error || response.statusText}`}`,
+                )
               } catch (e: any) {
                 console.error("🧪 Test failed:", e)
                 alert(`Test failed: ${e.message}`)

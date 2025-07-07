@@ -72,98 +72,49 @@ export class InvitationService {
       throw new Error("Admin privileges required to create users")
     }
 
-    // Check if Edge Function exists by testing connectivity
-    console.log("🔍 Testing Edge Function connectivity...")
+    // Call the Vercel Edge Function
+    console.log("📡 Calling Vercel Edge Function...")
 
     try {
-      const testResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-user-with-credentials`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-          },
-          body: JSON.stringify({ test: true }),
+      const response = await fetch("/api/create-user-with-credentials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-      )
-
-      console.log("🧪 Direct fetch test result:", {
-        status: testResponse.status,
-        statusText: testResponse.statusText,
-        ok: testResponse.ok,
+        body: JSON.stringify({
+          email: data.email,
+          fullName: data.fullName,
+          role: data.role,
+        }),
       })
 
-      if (testResponse.status === 404) {
-        throw new Error(
-          "Edge Function 'create-user-with-credentials' is not deployed. Please deploy the function first.",
-        )
-      }
-    } catch (fetchError: any) {
-      console.error("🚨 Direct fetch test failed:", fetchError)
-      if (fetchError.message.includes("not deployed")) {
-        throw fetchError
-      }
-    }
+      const result = await response.json()
 
-    // Call the Edge Function with enhanced error handling
-    console.log("📡 Invoking Edge Function via Supabase client...")
-
-    const { data: result, error: functionError } = await supabase.functions.invoke("create-user-with-credentials", {
-      body: {
-        email: data.email,
-        fullName: data.fullName,
-        role: data.role,
-      },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    })
-
-    console.log("📨 Edge Function response:", {
-      result,
-      functionError,
-      resultType: typeof result,
-      errorType: typeof functionError,
-    })
-
-    // Enhanced error handling
-    if (functionError) {
-      console.error("❌ Edge Function error details:", {
-        message: functionError.message,
-        context: functionError.context,
-        details: functionError.details,
-        stack: functionError.stack,
+      console.log("📨 Edge Function response:", {
+        status: response.status,
+        result,
       })
 
-      // Provide specific error messages based on error type
-      if (functionError.message?.includes("FunctionsRelayError")) {
-        throw new Error("Edge Function deployment error. The function may not be properly deployed or configured.")
-      } else if (functionError.message?.includes("FunctionsFetchError")) {
-        throw new Error("Network error connecting to Edge Function. Please check your connection and try again.")
-      } else if (functionError.message?.includes("FunctionsHttpError")) {
-        throw new Error(`Edge Function HTTP error: ${functionError.message}`)
-      } else {
-        throw new Error(`Edge Function error: ${functionError.message || "Unknown error occurred"}`)
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`)
       }
-    }
 
-    if (!result) {
-      throw new Error("No response received from Edge Function. The function may have failed silently.")
-    }
+      if (!result.success) {
+        throw new Error(result.error || result.message || "User creation failed")
+      }
 
-    if (typeof result !== "object") {
-      console.warn("⚠️ Unexpected response type:", typeof result, result)
-      throw new Error("Invalid response format from Edge Function")
-    }
+      console.log("✅ User created successfully:", result)
+      return result as UserCreationResult
+    } catch (error: any) {
+      console.error("❌ Edge Function error:", error)
 
-    if (!result.success) {
-      throw new Error(result.error || result.message || "User creation failed")
-    }
+      if (error.message.includes("fetch")) {
+        throw new Error("Network error: Could not connect to user creation service")
+      }
 
-    console.log("✅ User created successfully:", result)
-    return result as UserCreationResult
+      throw new Error(error.message || "Failed to create user")
+    }
   }
 
   // Keep existing methods for backward compatibility

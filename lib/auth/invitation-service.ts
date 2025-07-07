@@ -35,23 +35,28 @@ export class InvitationService {
       p_invited_by: user.id,
     })
 
-    if (error) throw error
+    if (error) {
+      console.error("Database error creating invitation:", error)
+      throw new Error(error.message || "Failed to create invitation")
+    }
 
-    // Send invitation email via API route
-    const response = await fetch("/api/invitations/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    // Send invitation email via Supabase Edge Function
+    const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-invitation", {
+      body: {
         email: data.email,
         fullName: data.fullName,
         role: data.role,
         invitationId: result,
-      }),
+      },
     })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || "Failed to send invitation email")
+    if (emailError) {
+      console.error("Email sending error:", emailError)
+      throw new Error(emailError.message || "Failed to send invitation email")
+    }
+
+    if (!emailResult?.success) {
+      throw new Error("Failed to send invitation email")
     }
 
     return result

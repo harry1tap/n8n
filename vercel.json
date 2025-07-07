@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "functions": {
     "api/create-user-with-credentials.ts": {
       "runtime": "@vercel/node@3.0.0"

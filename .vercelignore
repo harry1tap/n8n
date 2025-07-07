@@ -1,0 +1,13 @@
+# Ignore files and directories for Vercel deployment
+node_modules
+.next
+.env*.local
+.git
+.gitignore
+README.md
+scripts/
+supabase/
+*.md
+.npmrc
+pnpm-lock.yaml
+yarn.lock

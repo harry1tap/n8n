@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Users, UserPlus, UserMinus, Shield, Mail, Calendar } from "lucide-react"
+import { Users, UserPlus, UserMinus, Shield, Mail, Calendar, AlertCircle, CheckCircle } from "lucide-react"
 import { InvitationService, type InvitationData } from "@/lib/auth/invitation-service"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -32,7 +32,7 @@ export function AdminPanel() {
   const [newUserName, setNewUserName] = useState("")
   const [newUserRole, setNewUserRole] = useState<"admin" | "user">("user")
   const [showInviteForm, setShowInviteForm] = useState(false)
-  const [inviteStatus, setInviteStatus] = useState<"idle" | "success" | "error">("idle")
+  const [inviteStatus, setInviteStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -46,6 +46,7 @@ export function AdminPanel() {
       await Promise.all([loadProfiles(), loadInvitations()])
     } catch (error) {
       console.error("Error loading data:", error)
+      setError("Failed to load data. Please refresh the page.")
     } finally {
       setLoading(false)
     }
@@ -54,7 +55,10 @@ export function AdminPanel() {
   const loadProfiles = async () => {
     const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      console.error("Error loading profiles:", error)
+      throw error
+    }
     setProfiles(data || [])
   }
 
@@ -64,19 +68,25 @@ export function AdminPanel() {
       setInvitations(data)
     } catch (error) {
       console.error("Error loading invitations:", error)
+      // Don't throw here, invitations are not critical
     }
   }
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setInviteStatus("loading")
 
     try {
+      console.log("Creating invitation for:", { email: newUserEmail, role: newUserRole, fullName: newUserName })
+
       await InvitationService.createInvitation({
         email: newUserEmail,
         role: newUserRole,
         fullName: newUserName,
       })
+
+      console.log("Invitation created successfully")
 
       setNewUserEmail("")
       setNewUserName("")
@@ -85,8 +95,9 @@ export function AdminPanel() {
       setInviteStatus("success")
       await loadInvitations()
 
-      setTimeout(() => setInviteStatus("idle"), 3000)
+      setTimeout(() => setInviteStatus("idle"), 5000)
     } catch (error: any) {
+      console.error("Error creating invitation:", error)
       setError(error.message || "Failed to send invitation")
       setInviteStatus("error")
     }
@@ -119,7 +130,7 @@ export function AdminPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-white">Loading...</div>
+        <div className="text-white">Loading admin panel...</div>
       </div>
     )
   }
@@ -239,15 +250,29 @@ export function AdminPanel() {
                     </Select>
                   </div>
                   <div className="flex gap-2">
-                    <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Send Invitation
+                    <Button
+                      type="submit"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={inviteStatus === "loading"}
+                    >
+                      {inviteStatus === "loading" ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Sending...
+                        </div>
+                      ) : (
+                        <>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Invitation
+                        </>
+                      )}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setShowInviteForm(false)}
                       className="border-white/20 text-white hover:bg-white/10"
+                      disabled={inviteStatus === "loading"}
                     >
                       Cancel
                     </Button>
@@ -260,14 +285,16 @@ export function AdminPanel() {
           {/* Status Alerts */}
           {inviteStatus === "success" && (
             <Alert className="bg-green-500/20 border-green-500/50">
+              <CheckCircle className="h-4 w-4 text-green-400" />
               <AlertDescription className="text-green-200">
                 Invitation sent successfully! The user will receive an email with setup instructions.
               </AlertDescription>
             </Alert>
           )}
 
-          {error && (
+          {(error || inviteStatus === "error") && (
             <Alert className="bg-red-500/20 border-red-500/50">
+              <AlertCircle className="h-4 w-4 text-red-400" />
               <AlertDescription className="text-red-200">{error}</AlertDescription>
             </Alert>
           )}

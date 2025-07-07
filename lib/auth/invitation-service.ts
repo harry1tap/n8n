@@ -1,9 +1,24 @@
 import { supabase } from "@/lib/supabase/client"
 
-export interface CreateInvitationData {
+export interface CreateUserData {
   email: string
+  fullName: string
   role: "admin" | "user"
-  fullName?: string
+}
+
+export interface UserCreationResult {
+  success: boolean
+  message: string
+  user?: {
+    id: string
+    email: string
+    full_name: string
+    role: string
+  }
+  credentials?: {
+    email: string
+    temporary_password: string
+  }
 }
 
 export interface InvitationData {
@@ -21,61 +36,35 @@ export interface InvitationData {
 }
 
 export class InvitationService {
-  static async createInvitation(data: CreateInvitationData) {
+  static async createUserWithCredentials(data: CreateUserData): Promise<UserCreationResult> {
     // Get current user
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Not authenticated")
 
-    // Create invitation using the database function
-    const { data: invitationId, error } = await supabase.rpc("create_invitation", {
-      p_email: data.email,
-      p_role: data.role,
-      p_invited_by: user.id,
+    // Call the Edge Function to create user with credentials
+    const { data: result, error } = await supabase.functions.invoke("create-user-with-credentials", {
+      body: {
+        email: data.email,
+        fullName: data.fullName,
+        role: data.role,
+      },
     })
 
     if (error) {
-      console.error("Database error creating invitation:", error)
-      throw new Error(error.message || "Failed to create invitation")
+      console.error("Edge function error:", error)
+      throw new Error(error.message || "Failed to create user")
     }
 
-    // Get the invitation token
-    const { data: invitation, error: tokenError } = await supabase
-      .from("invitations")
-      .select("token")
-      .eq("id", invitationId)
-      .single()
-
-    if (tokenError || !invitation) {
-      throw new Error("Failed to retrieve invitation token")
+    if (!result?.success) {
+      throw new Error(result?.error || "Failed to create user")
     }
 
-    // Send invitation email using the database function
-    const { data: emailResult, error: emailError } = await supabase.rpc("edge_send_invitation", {
-      p_email: data.email,
-      p_full_name: data.fullName || "",
-      p_role: data.role,
-      p_invitation_id: invitationId,
-      p_invitation_token: invitation.token,
-    })
-
-    if (emailError) {
-      console.error("Email sending error:", emailError)
-      throw new Error(emailError.message || "Failed to send invitation email")
-    }
-
-    // For now, we'll show the invitation URL in the success message
-    // In production, this would be sent via email
-    console.log("Invitation created:", emailResult)
-
-    return {
-      invitationId,
-      invitationUrl: emailResult.invitation_url,
-      message: `Invitation created! Share this link with ${data.email}: ${emailResult.invitation_url}`,
-    }
+    return result as UserCreationResult
   }
 
+  // Keep the old invitation methods for backward compatibility
   static async getInvitations() {
     const { data, error } = await supabase
       .from("invitations")

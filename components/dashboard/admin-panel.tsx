@@ -10,7 +10,19 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Users, UserPlus, UserMinus, Shield, Mail, Calendar, AlertCircle, CheckCircle, Copy } from "lucide-react"
+import {
+  Users,
+  UserPlus,
+  UserMinus,
+  Shield,
+  Mail,
+  Calendar,
+  AlertCircle,
+  CheckCircle,
+  Copy,
+  Eye,
+  EyeOff,
+} from "lucide-react"
 import { InvitationService, type InvitationData } from "@/lib/auth/invitation-service"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -31,11 +43,14 @@ export function AdminPanel() {
   const [newUserEmail, setNewUserEmail] = useState("")
   const [newUserName, setNewUserName] = useState("")
   const [newUserRole, setNewUserRole] = useState<"admin" | "user">("user")
-  const [showInviteForm, setShowInviteForm] = useState(false)
-  const [inviteStatus, setInviteStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createStatus, setCreateStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-  const [invitationUrl, setInvitationUrl] = useState("")
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; temporary_password: string } | null>(
+    null,
+  )
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -74,42 +89,42 @@ export function AdminPanel() {
     }
   }
 
-  const handleInviteUser = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setSuccessMessage("")
-    setInvitationUrl("")
-    setInviteStatus("loading")
+    setCreatedCredentials(null)
+    setCreateStatus("loading")
 
     try {
-      console.log("Creating invitation for:", { email: newUserEmail, role: newUserRole, fullName: newUserName })
+      console.log("Creating user:", { email: newUserEmail, fullName: newUserName, role: newUserRole })
 
-      const result = await InvitationService.createInvitation({
+      const result = await InvitationService.createUserWithCredentials({
         email: newUserEmail,
-        role: newUserRole,
         fullName: newUserName,
+        role: newUserRole,
       })
 
-      console.log("Invitation created successfully:", result)
+      console.log("User created successfully:", result)
 
       setNewUserEmail("")
       setNewUserName("")
       setNewUserRole("user")
-      setShowInviteForm(false)
-      setInviteStatus("success")
-      setSuccessMessage(result.message || "Invitation created successfully!")
-      setInvitationUrl(result.invitationUrl || "")
-      await loadInvitations()
+      setShowCreateForm(false)
+      setCreateStatus("success")
+      setSuccessMessage(result.message)
+      setCreatedCredentials(result.credentials || null)
+      await loadProfiles()
 
       setTimeout(() => {
-        setInviteStatus("idle")
+        setCreateStatus("idle")
         setSuccessMessage("")
-        setInvitationUrl("")
-      }, 30000) // Show for 30 seconds
+        setCreatedCredentials(null)
+      }, 60000) // Show for 60 seconds
     } catch (error: any) {
-      console.error("Error creating invitation:", error)
-      setError(error.message || "Failed to send invitation")
-      setInviteStatus("error")
+      console.error("Error creating user:", error)
+      setError(error.message || "Failed to create user")
+      setCreateStatus("error")
     }
   }
 
@@ -124,10 +139,10 @@ export function AdminPanel() {
     }
   }
 
-  const copyInvitationUrl = async () => {
-    if (invitationUrl) {
-      await navigator.clipboard.writeText(invitationUrl)
-      // You could add a toast notification here
+  const copyCredentials = async () => {
+    if (createdCredentials) {
+      const credentialsText = `Email: ${createdCredentials.email}\nTemporary Password: ${createdCredentials.temporary_password}`
+      await navigator.clipboard.writeText(credentialsText)
     }
   }
 
@@ -199,26 +214,31 @@ export function AdminPanel() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-white">User Management</CardTitle>
-              <CardDescription className="text-gray-300">Manage team members and their access levels</CardDescription>
+              <CardDescription className="text-gray-300">
+                Create user accounts with automatic email delivery
+              </CardDescription>
             </div>
             <Button
-              onClick={() => setShowInviteForm(!showInviteForm)}
+              onClick={() => setShowCreateForm(!showCreateForm)}
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
             >
               <UserPlus className="h-4 w-4 mr-2" />
-              Invite User
+              Create User
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Invite Form */}
-          {showInviteForm && (
+          {/* Create User Form */}
+          {showCreateForm && (
             <Card className="bg-[#1E3A5F]/20 border-[#1E3A5F]/30">
               <CardHeader>
-                <CardTitle className="text-white text-lg">Invite New User</CardTitle>
+                <CardTitle className="text-white text-lg">Create New User</CardTitle>
+                <CardDescription className="text-gray-300">
+                  User will receive an email with their login credentials
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleInviteUser} className="space-y-4">
+                <form onSubmit={handleCreateUser} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="userName" className="text-gray-200">
@@ -270,26 +290,26 @@ export function AdminPanel() {
                     <Button
                       type="submit"
                       className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={inviteStatus === "loading"}
+                      disabled={createStatus === "loading"}
                     >
-                      {inviteStatus === "loading" ? (
+                      {createStatus === "loading" ? (
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Creating...
+                          Creating User...
                         </div>
                       ) : (
                         <>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Create Invitation
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Create User & Send Email
                         </>
                       )}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setShowInviteForm(false)}
+                      onClick={() => setShowCreateForm(false)}
                       className="border-[#1E3A5F] text-gray-300 hover:bg-[#1E3A5F]/20"
-                      disabled={inviteStatus === "loading"}
+                      disabled={createStatus === "loading"}
                     >
                       Cancel
                     </Button>
@@ -300,23 +320,45 @@ export function AdminPanel() {
           )}
 
           {/* Status Alerts */}
-          {inviteStatus === "success" && successMessage && (
+          {createStatus === "success" && successMessage && (
             <Alert className="bg-green-900/50 border-green-700/50">
               <CheckCircle className="h-4 w-4 text-green-400" />
               <AlertDescription className="text-green-300">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p>{successMessage}</p>
-                  {invitationUrl && (
-                    <div className="flex items-center gap-2 p-2 bg-green-800/30 rounded">
-                      <code className="text-xs text-green-200 flex-1 break-all">{invitationUrl}</code>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={copyInvitationUrl}
-                        className="text-green-300 hover:text-green-100 h-6 w-6 p-0"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+                  {createdCredentials && (
+                    <div className="bg-green-800/30 rounded-lg p-4 space-y-2">
+                      <p className="font-semibold">User Credentials (for your reference):</p>
+                      <div className="space-y-1 text-sm">
+                        <p>
+                          <strong>Email:</strong> {createdCredentials.email}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <strong>Temporary Password:</strong>
+                          <code className="bg-green-700/30 px-2 py-1 rounded text-green-200">
+                            {showPassword ? createdCredentials.temporary_password : "••••••••••••"}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-green-300 hover:text-green-100 h-6 w-6 p-0"
+                          >
+                            {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={copyCredentials}
+                            className="text-green-300 hover:text-green-100 h-6 w-6 p-0"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-green-200 mt-2">
+                        ✅ Welcome email sent to user with login instructions
+                      </p>
                     </div>
                   )}
                 </div>
@@ -324,7 +366,7 @@ export function AdminPanel() {
             </Alert>
           )}
 
-          {(error || inviteStatus === "error") && (
+          {(error || createStatus === "error") && (
             <Alert className="bg-red-900/50 border-red-700/50">
               <AlertCircle className="h-4 w-4 text-red-400" />
               <AlertDescription className="text-red-300">{error}</AlertDescription>
@@ -392,10 +434,10 @@ export function AdminPanel() {
             ))}
           </div>
 
-          {/* Pending Invitations */}
+          {/* Pending Invitations (if any exist from old system) */}
           {invitations.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Invitations</h3>
+              <h3 className="text-lg font-semibold text-white">Legacy Invitations</h3>
               {invitations.map((invitation) => (
                 <Card key={invitation.id} className="bg-[#1E3A5F]/20 border-[#1E3A5F]/30">
                   <CardContent className="p-4">

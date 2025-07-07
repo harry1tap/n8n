@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase/client"
@@ -22,26 +21,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    console.log("AuthProvider: Getting initial session...")
+    let mounted = true
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log("AuthProvider: Initial session result:", { session: !!session, error })
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    const getInitialSession = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (mounted) {
+          if (error) {
+            console.error("AuthProvider: Error getting session:", error)
+          } else {
+            console.log("AuthProvider: Initial session loaded:", !!session)
+            setSession(session)
+            setUser(session?.user ?? null)
+          }
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("AuthProvider: Exception getting session:", error)
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    getInitialSession()
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("AuthProvider: Auth state changed:", { event: _event, session: !!session })
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (mounted) {
+        console.log("AuthProvider: Auth state changed:", event, !!session)
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {
@@ -66,8 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
   }
-
-  console.log("AuthProvider: Current state:", { user: !!user, session: !!session, loading })
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

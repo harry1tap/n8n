@@ -32,6 +32,7 @@ export function LoginForm() {
     const { error } = await signIn(email, password)
 
     if (error) {
+      console.error("Supabase Sign-In Error:", JSON.stringify(error, null, 2)) // Add this line
       setError(error.message)
       setIsLoading(false)
     } else {
@@ -56,6 +57,7 @@ export function LoginForm() {
       })
 
       if (error) {
+        console.error("Supabase Sign-Up Error:", JSON.stringify(error, null, 2)) // Add this line
         setError(error.message)
       } else if (data.user) {
         // Sign up successful, redirect to dashboard

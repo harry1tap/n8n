@@ -29,7 +29,7 @@ export class InvitationService {
     if (!user) throw new Error("Not authenticated")
 
     // Create invitation using the database function
-    const { data: result, error } = await supabase.rpc("create_invitation", {
+    const { data: invitationId, error } = await supabase.rpc("create_invitation", {
       p_email: data.email,
       p_role: data.role,
       p_invited_by: user.id,
@@ -40,14 +40,24 @@ export class InvitationService {
       throw new Error(error.message || "Failed to create invitation")
     }
 
-    // Send invitation email via Supabase Edge Function
-    const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-invitation", {
-      body: {
-        email: data.email,
-        fullName: data.fullName,
-        role: data.role,
-        invitationId: result,
-      },
+    // Get the invitation token
+    const { data: invitation, error: tokenError } = await supabase
+      .from("invitations")
+      .select("token")
+      .eq("id", invitationId)
+      .single()
+
+    if (tokenError || !invitation) {
+      throw new Error("Failed to retrieve invitation token")
+    }
+
+    // Send invitation email using the database function
+    const { data: emailResult, error: emailError } = await supabase.rpc("edge_send_invitation", {
+      p_email: data.email,
+      p_full_name: data.fullName || "",
+      p_role: data.role,
+      p_invitation_id: invitationId,
+      p_invitation_token: invitation.token,
     })
 
     if (emailError) {
@@ -55,11 +65,15 @@ export class InvitationService {
       throw new Error(emailError.message || "Failed to send invitation email")
     }
 
-    if (!emailResult?.success) {
-      throw new Error("Failed to send invitation email")
-    }
+    // For now, we'll show the invitation URL in the success message
+    // In production, this would be sent via email
+    console.log("Invitation created:", emailResult)
 
-    return result
+    return {
+      invitationId,
+      invitationUrl: emailResult.invitation_url,
+      message: `Invitation created! Share this link with ${data.email}: ${emailResult.invitation_url}`,
+    }
   }
 
   static async getInvitations() {

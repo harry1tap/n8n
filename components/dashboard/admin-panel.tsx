@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Users, UserPlus, UserMinus, Shield, Mail, Calendar, AlertCircle, CheckCircle } from "lucide-react"
+import { Users, UserPlus, UserMinus, Shield, Mail, Calendar, AlertCircle, CheckCircle, Copy } from "lucide-react"
 import { InvitationService, type InvitationData } from "@/lib/auth/invitation-service"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -34,6 +34,8 @@ export function AdminPanel() {
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteStatus, setInviteStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [error, setError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
+  const [invitationUrl, setInvitationUrl] = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -75,27 +77,35 @@ export function AdminPanel() {
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccessMessage("")
+    setInvitationUrl("")
     setInviteStatus("loading")
 
     try {
       console.log("Creating invitation for:", { email: newUserEmail, role: newUserRole, fullName: newUserName })
 
-      await InvitationService.createInvitation({
+      const result = await InvitationService.createInvitation({
         email: newUserEmail,
         role: newUserRole,
         fullName: newUserName,
       })
 
-      console.log("Invitation created successfully")
+      console.log("Invitation created successfully:", result)
 
       setNewUserEmail("")
       setNewUserName("")
       setNewUserRole("user")
       setShowInviteForm(false)
       setInviteStatus("success")
+      setSuccessMessage(result.message || "Invitation created successfully!")
+      setInvitationUrl(result.invitationUrl || "")
       await loadInvitations()
 
-      setTimeout(() => setInviteStatus("idle"), 5000)
+      setTimeout(() => {
+        setInviteStatus("idle")
+        setSuccessMessage("")
+        setInvitationUrl("")
+      }, 30000) // Show for 30 seconds
     } catch (error: any) {
       console.error("Error creating invitation:", error)
       setError(error.message || "Failed to send invitation")
@@ -111,6 +121,13 @@ export function AdminPanel() {
       await loadProfiles()
     } catch (error: any) {
       setError(error.message || "Failed to deactivate user")
+    }
+  }
+
+  const copyInvitationUrl = async () => {
+    if (invitationUrl) {
+      await navigator.clipboard.writeText(invitationUrl)
+      // You could add a toast notification here
     }
   }
 
@@ -142,51 +159,51 @@ export function AdminPanel() {
     <div className="space-y-6">
       {/* Admin Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-sm font-medium text-gray-300">Active Users</CardTitle>
+            <Users className="h-4 w-4 text-[#60A5FA]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{activeUsers}</div>
-            <p className="text-xs text-blue-200">Total registered users</p>
+            <p className="text-xs text-gray-300">Total registered users</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white">Pending Invitations</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Pending Invitations</CardTitle>
             <Mail className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{pendingInvitations}</div>
-            <p className="text-xs text-blue-200">Awaiting acceptance</p>
+            <p className="text-xs text-gray-300">Awaiting acceptance</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white">System Status</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">System Status</CardTitle>
             <Shield className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-400">Online</div>
-            <p className="text-xs text-blue-200">All systems operational</p>
+            <p className="text-xs text-gray-300">All systems operational</p>
           </CardContent>
         </Card>
       </div>
 
       {/* User Management */}
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+      <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-white">User Management</CardTitle>
-              <CardDescription className="text-blue-200">Manage team members and their access levels</CardDescription>
+              <CardDescription className="text-gray-300">Manage team members and their access levels</CardDescription>
             </div>
             <Button
               onClick={() => setShowInviteForm(!showInviteForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Invite User
@@ -196,7 +213,7 @@ export function AdminPanel() {
         <CardContent className="space-y-6">
           {/* Invite Form */}
           {showInviteForm && (
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-[#1E3A5F]/20 border-[#1E3A5F]/30">
               <CardHeader>
                 <CardTitle className="text-white text-lg">Invite New User</CardTitle>
               </CardHeader>
@@ -204,7 +221,7 @@ export function AdminPanel() {
                 <form onSubmit={handleInviteUser} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="userName" className="text-white">
+                      <Label htmlFor="userName" className="text-gray-200">
                         Full Name
                       </Label>
                       <Input
@@ -212,12 +229,12 @@ export function AdminPanel() {
                         placeholder="Enter full name"
                         value={newUserName}
                         onChange={(e) => setNewUserName(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/60"
+                        className="bg-[#1E3A5F]/20 border-[#1E3A5F] text-white placeholder:text-gray-500"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="userEmail" className="text-white">
+                      <Label htmlFor="userEmail" className="text-gray-200">
                         Email Address
                       </Label>
                       <Input
@@ -226,24 +243,24 @@ export function AdminPanel() {
                         placeholder="Enter email address"
                         value={newUserEmail}
                         onChange={(e) => setNewUserEmail(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/60"
+                        className="bg-[#1E3A5F]/20 border-[#1E3A5F] text-white placeholder:text-gray-500"
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="userRole" className="text-white">
+                    <Label htmlFor="userRole" className="text-gray-200">
                       Role
                     </Label>
                     <Select value={newUserRole} onValueChange={(value: "admin" | "user") => setNewUserRole(value)}>
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                      <SelectTrigger className="bg-[#1E3A5F]/20 border-[#1E3A5F] text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-white/20">
-                        <SelectItem value="user" className="text-white hover:bg-white/10">
+                      <SelectContent className="bg-[#0F1B2E] border-[#1E3A5F]">
+                        <SelectItem value="user" className="text-white hover:bg-[#1E3A5F]/50">
                           User
                         </SelectItem>
-                        <SelectItem value="admin" className="text-white hover:bg-white/10">
+                        <SelectItem value="admin" className="text-white hover:bg-[#1E3A5F]/50">
                           Admin
                         </SelectItem>
                       </SelectContent>
@@ -258,12 +275,12 @@ export function AdminPanel() {
                       {inviteStatus === "loading" ? (
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Sending...
+                          Creating...
                         </div>
                       ) : (
                         <>
                           <Mail className="h-4 w-4 mr-2" />
-                          Send Invitation
+                          Create Invitation
                         </>
                       )}
                     </Button>
@@ -271,7 +288,7 @@ export function AdminPanel() {
                       type="button"
                       variant="outline"
                       onClick={() => setShowInviteForm(false)}
-                      className="border-white/20 text-white hover:bg-white/10"
+                      className="border-[#1E3A5F] text-gray-300 hover:bg-[#1E3A5F]/20"
                       disabled={inviteStatus === "loading"}
                     >
                       Cancel
@@ -283,19 +300,34 @@ export function AdminPanel() {
           )}
 
           {/* Status Alerts */}
-          {inviteStatus === "success" && (
-            <Alert className="bg-green-500/20 border-green-500/50">
+          {inviteStatus === "success" && successMessage && (
+            <Alert className="bg-green-900/50 border-green-700/50">
               <CheckCircle className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-200">
-                Invitation sent successfully! The user will receive an email with setup instructions.
+              <AlertDescription className="text-green-300">
+                <div className="space-y-2">
+                  <p>{successMessage}</p>
+                  {invitationUrl && (
+                    <div className="flex items-center gap-2 p-2 bg-green-800/30 rounded">
+                      <code className="text-xs text-green-200 flex-1 break-all">{invitationUrl}</code>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={copyInvitationUrl}
+                        className="text-green-300 hover:text-green-100 h-6 w-6 p-0"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </AlertDescription>
             </Alert>
           )}
 
           {(error || inviteStatus === "error") && (
-            <Alert className="bg-red-500/20 border-red-500/50">
+            <Alert className="bg-red-900/50 border-red-700/50">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <AlertDescription className="text-red-200">{error}</AlertDescription>
+              <AlertDescription className="text-red-300">{error}</AlertDescription>
             </Alert>
           )}
 
@@ -303,11 +335,11 @@ export function AdminPanel() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-white">Active Users</h3>
             {profiles.map((profile) => (
-              <Card key={profile.id} className="bg-white/5 border-white/10">
+              <Card key={profile.id} className="bg-[#1E3A5F]/20 border-[#1E3A5F]/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-[#2563EB] rounded-full flex items-center justify-center">
                         <span className="text-white font-semibold">
                           {(profile.full_name || profile.email)
                             .split(" ")
@@ -318,7 +350,7 @@ export function AdminPanel() {
                       </div>
                       <div>
                         <h3 className="text-white font-semibold">{profile.full_name || "No name"}</h3>
-                        <p className="text-blue-200 text-sm">{profile.email}</p>
+                        <p className="text-gray-300 text-sm">{profile.email}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge
                             className={
@@ -340,7 +372,7 @@ export function AdminPanel() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-right text-sm text-white/70">
+                      <div className="text-right text-sm text-gray-300">
                         <p>Joined: {new Date(profile.created_at).toLocaleDateString()}</p>
                       </div>
                       {profile.id !== user?.id && profile.is_active && (
@@ -365,7 +397,7 @@ export function AdminPanel() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Invitations</h3>
               {invitations.map((invitation) => (
-                <Card key={invitation.id} className="bg-white/5 border-white/10">
+                <Card key={invitation.id} className="bg-[#1E3A5F]/20 border-[#1E3A5F]/30">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -374,7 +406,7 @@ export function AdminPanel() {
                         </div>
                         <div>
                           <h3 className="text-white font-semibold">{invitation.email}</h3>
-                          <p className="text-blue-200 text-sm">
+                          <p className="text-gray-300 text-sm">
                             Invited by {invitation.invited_by.full_name || invitation.invited_by.email}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
@@ -391,7 +423,7 @@ export function AdminPanel() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right text-sm text-white/70">
+                      <div className="text-right text-sm text-gray-300">
                         <p className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Expires: {new Date(invitation.expires_at).toLocaleDateString()}

@@ -1,30 +1,12 @@
-/**
- * Creates a singleton Supabase browser client.
- *
- * In the v0 preview sandbox the two NEXT_PUBLIC_ variables might be undefined,
- * which would normally throw “supabaseUrl is required.”  We fall back to
- * placeholders so the UI can render while still warning the developer.
- */
-
 import { createClient } from "@supabase/supabase-js"
 
-/* ------------------------------------------------------------------
-   If the NEXT_PUBLIC_ variables are missing (e.g. in a preview build)
-   we fall back to harmless placeholders so createClient doesn’t throw.
------------------------------------------------------------------- */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co"
+// Use your actual Supabase credentials
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vdjfjytmzhoyqikbzxut.supabase.co"
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkamZqeXRtemhveXFpa2J6eHV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4OTQ2MjMsImV4cCI6MjA2NzQ3MDYyM30.SZNQ2eGyXPAiPyjV3QM4YvMaDnPFdwa2WbiCfLeSdDE"
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "public-anon-key"
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[Supabase] Environment variables missing – using placeholders. " +
-      "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY for a real connection.",
-  )
-}
-
-// Singleton to avoid multiple client instances
+// Create a singleton instance to prevent multiple clients
 let supabaseInstance: ReturnType<typeof createClient> | null = null
 
 export const supabase = (() => {

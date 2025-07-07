@@ -43,6 +43,8 @@ export class InvitationService {
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Not authenticated")
 
+    console.log("Calling Edge Function with data:", data)
+
     // Call the Edge Function to create user with credentials
     const { data: result, error } = await supabase.functions.invoke("create-user-with-credentials", {
       body: {
@@ -51,6 +53,8 @@ export class InvitationService {
         role: data.role,
       },
     })
+
+    console.log("Edge Function response:", { result, error })
 
     if (error) {
       console.error("Edge function error:", error)

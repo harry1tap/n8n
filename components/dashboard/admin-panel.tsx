@@ -125,6 +125,15 @@ export function AdminPanel() {
       console.error("Error creating user:", error)
       setError(error.message || "Failed to create user")
       setCreateStatus("error")
+
+      // Show more detailed error information
+      if (error.message.includes("invoke")) {
+        setError("Edge Function call failed. Please check if the function is deployed correctly.")
+      } else if (error.message.includes("Forbidden")) {
+        setError("You don't have admin permissions to create users.")
+      } else if (error.message.includes("already exists")) {
+        setError("A user with this email already exists.")
+      }
     }
   }
 

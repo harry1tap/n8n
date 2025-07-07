@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "configure:env": "./scripts/configure-environment.sh",
+    "deploy:edge-function": "./scripts/auto-deploy-edge-function.sh",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "setup:complete": "./scripts/complete-setup.sh",
+    "start": "next start",
+    "test:edge-function": "curl -X POST https://vdjfjytmzhoyqikbzxut.supabase.co/functions/v1/create-user-with-credentials -H 'Content-Type: application/json' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkamZqeXRtemhveXFpa2J6eHV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4OTQ2MjMsImV4cCI6MjA2NzQ3MDYyM30.SZNQ2eGyXPAiPyjV3QM4YvMaDnPFdwa2WbiCfLeSdDE' -d '{\"test\": true}'",
+    "verify:deployment": "npx ts-node ./scripts/verify-deployment.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.0.5",
@@ -24,6 +29,8 @@
     "child_process": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "http": "latest",
+    "https": "latest",
     "https:": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
@@ -42,6 +49,7 @@
     "eslint-config-next": "14.1.0",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.1",
     "typescript": "^5"
   },
   "packageManager": "npm@10.2.0",

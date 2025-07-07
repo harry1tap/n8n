@@ -1,67 +1,182 @@
 # SKYWIDE Edge Function Deployment Guide
 
-## 🚀 Deploy the Edge Function
+## 🚀 Automated Deployment
 
-### Option 1: Using Supabase CLI (Recommended)
+### Quick Start (Recommended)
 
-1. **Install Supabase CLI** (if not already installed):
-   \`\`\`bash
-   npm install -g supabase
-   \`\`\`
+Run the complete setup process:
 
-2. **Login to Supabase**:
-   \`\`\`bash
-   supabase login
-   \`\`\`
+\`\`\`bash
+# Make scripts executable
+chmod +x ./scripts/*.sh
 
-3. **Deploy the Edge Function**:
-   \`\`\`bash
-   supabase functions deploy create-user-with-credentials --project-ref vdjfjytmzhoyqikbzxut
-   \`\`\`
+# Run complete setup
+./scripts/complete-setup.sh
+\`\`\`
 
-4. **Set Environment Variables**:
-   \`\`\`bash
-   # Set your Resend API key
-   supabase secrets set RESEND_API_KEY=re_your_actual_resend_key --project-ref vdjfjytmzhoyqikbzxut
-   \`\`\`
+This will:
+1. Configure environment variables
+2. Deploy the Edge Function
+3. Verify deployment
+4. Generate a comprehensive report
 
-### Option 2: Using Supabase Dashboard
+### Step-by-Step Deployment
 
-1. **Go to Edge Functions** in your Supabase dashboard:
-   👉 https://supabase.com/dashboard/project/vdjfjytmzhoyqikbzxut/functions
+#### 1. Configure Environment Variables
 
-2. **Create New Function**:
-   - Name: `create-user-with-credentials`
-   - Copy the code from `supabase/functions/create-user-with-credentials/index.ts`
+\`\`\`bash
+./scripts/configure-environment.sh
+\`\`\`
 
-3. **Set Environment Variables**:
-   - Go to Settings → Edge Functions → Environment Variables
-   - Add: `RESEND_API_KEY` = your Resend API key
+This script will:
+- Prompt for your Resend API key
+- Set environment variables in Supabase
+- Create a local `.env.local` file
 
-## 🧪 Test the Function
+#### 2. Deploy Edge Function
 
-After deployment, test the user creation through your admin panel at:
-👉 https://skywide.co/dashboard/admin
+\`\`\`bash
+./scripts/auto-deploy-edge-function.sh
+\`\`\`
 
-## ✅ What the Function Does
+This script will:
+- Install prerequisites (Supabase CLI)
+- Authenticate with Supabase
+- Deploy the Edge Function
+- Configure environment variables
+- Verify deployment
 
-- ✅ Creates user in Supabase Auth with temporary password
-- ✅ Creates profile in database with proper role
-- ✅ Sends welcome email with login credentials
-- ✅ Logs all actions for audit trail
-- ✅ Handles errors gracefully with cleanup
+#### 3. Verify Deployment
 
-## 🔧 Environment Variables Required
+\`\`\`bash
+npm run verify:deployment
+\`\`\`
 
-- `SUPABASE_URL` - Auto-provided by Supabase
-- `SUPABASE_ANON_KEY` - Auto-provided by Supabase  
-- `SUPABASE_SERVICE_ROLE_KEY` - Auto-provided by Supabase
-- `RESEND_API_KEY` - You need to set this manually
+This will run comprehensive tests to ensure everything is working.
 
-## 🎯 Expected Result
+## 🔧 Manual Deployment
 
-When you create a user through the admin panel:
-1. User account created instantly
-2. Welcome email sent automatically
-3. User can login immediately with provided credentials
-4. Admin sees success message with credentials for reference
+If you prefer manual deployment:
+
+### Prerequisites
+
+\`\`\`bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+\`\`\`
+
+### Deploy Function
+
+\`\`\`bash
+# Deploy the function
+supabase functions deploy create-user-with-credentials --project-ref vdjfjytmzhoyqikbzxut
+
+# Set environment variables
+supabase secrets set RESEND_API_KEY=your_key --project-ref vdjfjytmzhoyqikbzxut
+supabase secrets set APP_URL=https://skywide.co --project-ref vdjfjytmzhoyqikbzxut
+\`\`\`
+
+## 🧪 Testing
+
+### Quick Test
+
+\`\`\`bash
+npm run test:edge-function
+\`\`\`
+
+### Comprehensive Testing
+
+\`\`\`bash
+npm run verify:deployment
+\`\`\`
+
+### Manual Testing
+
+1. Go to: https://skywide.co/dashboard/admin
+2. Click "Test Edge Function" button
+3. Try creating a test user
+
+## 📊 Monitoring
+
+### Function Logs
+
+Monitor function execution:
+https://supabase.com/dashboard/project/vdjfjytmzhoyqikbzxut/functions/create-user-with-credentials/logs
+
+### Environment Variables
+
+Check configured variables:
+\`\`\`bash
+supabase secrets list --project-ref vdjfjytmzhoyqikbzxut
+\`\`\`
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **Function not found (404)**
+   - Solution: Re-run deployment script
+   - Check: Function exists in Supabase dashboard
+
+2. **Authentication errors (401)**
+   - Solution: Verify user has admin role
+   - Check: Login status in admin panel
+
+3. **Email not sending**
+   - Solution: Verify RESEND_API_KEY is set
+   - Check: Resend dashboard for API key status
+
+4. **Network errors**
+   - Solution: Check internet connection
+   - Check: Supabase service status
+
+### Debug Commands
+
+\`\`\`bash
+# Test function connectivity
+curl -X POST https://vdjfjytmzhoyqikbzxut.supabase.co/functions/v1/create-user-with-credentials \
+  -H "Content-Type: application/json" \
+  -H "apikey: YOUR_ANON_KEY" \
+  -d '{"test": true}'
+
+# List all functions
+supabase functions list --project-ref vdjfjytmzhoyqikbzxut
+
+# Check secrets
+supabase secrets list --project-ref vdjfjytmzhoyqikbzxut
+\`\`\`
+
+## 📋 Checklist
+
+Before going live, ensure:
+
+- [ ] Edge Function deployed successfully
+- [ ] Environment variables configured
+- [ ] Function responds to test requests
+- [ ] Admin panel can create users
+- [ ] Email delivery is working
+- [ ] Function logs are accessible
+- [ ] Error handling is working properly
+
+## 🎯 Success Indicators
+
+When everything is working correctly:
+
+✅ Function returns 200/401 status (not 404)
+✅ Admin panel shows "Function accessible!" 
+✅ User creation succeeds with credentials
+✅ Welcome emails are delivered
+✅ New users appear in user list
+✅ Function logs show successful executions
+
+## 📞 Support
+
+If you encounter issues:
+
+1. Check the function logs in Supabase dashboard
+2. Run the verification script for detailed diagnostics
+3. Review the troubleshooting section above
+4. Check Supabase service status

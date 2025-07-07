@@ -26,22 +26,31 @@ export function LoginForm() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("LoginForm: Starting sign in process...")
     setIsLoading(true)
     setError("")
 
-    const { error } = await signIn(email, password)
+    try {
+      const { error } = await signIn(email, password)
 
-    if (error) {
-      console.error("Supabase Sign-In Error:", JSON.stringify(error, null, 2)) // Add this line
-      setError(error.message)
+      if (error) {
+        console.error("LoginForm: Sign in error:", error)
+        setError(error.message)
+        setIsLoading(false)
+      } else {
+        console.log("LoginForm: Sign in successful, redirecting to dashboard...")
+        router.push("/dashboard")
+      }
+    } catch (err) {
+      console.error("LoginForm: Unexpected error:", err)
+      setError("An unexpected error occurred")
       setIsLoading(false)
-    } else {
-      router.push("/dashboard")
     }
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("LoginForm: Starting sign up process...")
     setIsLoading(true)
     setError("")
 
@@ -57,13 +66,14 @@ export function LoginForm() {
       })
 
       if (error) {
-        console.error("Supabase Sign-Up Error:", JSON.stringify(error, null, 2)) // Add this line
+        console.error("LoginForm: Sign up error:", error)
         setError(error.message)
       } else if (data.user) {
-        // Sign up successful, redirect to dashboard
+        console.log("LoginForm: Sign up successful, redirecting to dashboard...")
         router.push("/dashboard")
       }
     } catch (err: any) {
+      console.error("LoginForm: Unexpected sign up error:", err)
       setError(err.message || "Failed to create account")
     } finally {
       setIsLoading(false)

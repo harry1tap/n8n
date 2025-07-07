@@ -97,16 +97,71 @@ export function AdminPanel() {
     setCreateStatus("loading")
 
     try {
-      console.log("Creating user:", { email: newUserEmail, fullName: newUserName, role: newUserRole })
+      console.log("🚀 Starting user creation process...")
+      console.log("📝 Form data:", { email: newUserEmail, fullName: newUserName, role: newUserRole })
 
-      const result = await InvitationService.createUserWithCredentials({
-        email: newUserEmail,
-        fullName: newUserName,
-        role: newUserRole,
+      // Check if user is authenticated first
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+      console.log("👤 Current user:", user?.email, "Error:", authError)
+
+      if (!user) {
+        throw new Error("You must be logged in to create users")
+      }
+
+      // Check if user has admin role
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+
+      console.log("🔐 User profile:", profile, "Error:", profileError)
+
+      if (profile?.role !== "admin") {
+        throw new Error("You must be an admin to create users")
+      }
+
+      console.log("📡 Calling Edge Function...")
+
+      // Call the Edge Function with detailed logging
+      const { data: result, error: functionError } = await supabase.functions.invoke("create-user-with-credentials", {
+        body: {
+          email: newUserEmail,
+          fullName: newUserName,
+          role: newUserRole,
+        },
       })
 
-      console.log("User created successfully:", result)
+      console.log("📨 Edge Function response:", { result, error: functionError })
+      console.log("📨 Full response details:", JSON.stringify({ result, functionError }, null, 2))
 
+      if (functionError) {
+        console.error("❌ Edge function error:", functionError)
+
+        // Provide more specific error messages
+        if (functionError.message?.includes("FunctionsRelayError")) {
+          throw new Error("Edge Function is not deployed or not accessible. Please check the deployment.")
+        } else if (functionError.message?.includes("FunctionsFetchError")) {
+          throw new Error("Failed to connect to Edge Function. Please check your network connection.")
+        } else {
+          throw new Error(`Edge Function error: ${functionError.message}`)
+        }
+      }
+
+      if (!result) {
+        throw new Error("No response received from Edge Function")
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create user")
+      }
+
+      console.log("✅ User created successfully:", result)
+
+      // Reset form and show success
       setNewUserEmail("")
       setNewUserName("")
       setNewUserRole("user")
@@ -116,23 +171,26 @@ export function AdminPanel() {
       setCreatedCredentials(result.credentials || null)
       await loadProfiles()
 
+      // Auto-hide success message after 60 seconds
       setTimeout(() => {
         setCreateStatus("idle")
         setSuccessMessage("")
         setCreatedCredentials(null)
-      }, 60000) // Show for 60 seconds
+      }, 60000)
     } catch (error: any) {
-      console.error("Error creating user:", error)
+      console.error("💥 Error creating user:", error)
       setError(error.message || "Failed to create user")
       setCreateStatus("error")
 
-      // Show more detailed error information
-      if (error.message.includes("invoke")) {
-        setError("Edge Function call failed. Please check if the function is deployed correctly.")
-      } else if (error.message.includes("Forbidden")) {
-        setError("You don't have admin permissions to create users.")
+      // Provide helpful error messages based on the error type
+      if (error.message.includes("not deployed")) {
+        setError("❌ Edge Function not deployed. Please run the deployment script first.")
+      } else if (error.message.includes("admin")) {
+        setError("❌ You don't have admin permissions to create users.")
       } else if (error.message.includes("already exists")) {
-        setError("A user with this email already exists.")
+        setError("❌ A user with this email already exists.")
+      } else if (error.message.includes("network") || error.message.includes("fetch")) {
+        setError("❌ Network error. Please check your internet connection and try again.")
       }
     }
   }
@@ -216,6 +274,49 @@ export function AdminPanel() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Debug Information */}
+      <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">
+        <CardHeader>
+          <CardTitle className="text-white text-sm">🔧 Debug Information</CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs space-y-2">
+          <div className="text-gray-300">
+            <p>
+              <strong>Current User:</strong> {user?.email}
+            </p>
+            <p>
+              <strong>User ID:</strong> {user?.id}
+            </p>
+            <p>
+              <strong>Supabase URL:</strong> {process.env.NEXT_PUBLIC_SUPABASE_URL ? "✅ Set" : "❌ Missing"}
+            </p>
+            <p>
+              <strong>Supabase Key:</strong> {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ Set" : "❌ Missing"}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                console.log("🧪 Testing Edge Function connection...")
+                const { data, error } = await supabase.functions.invoke("create-user-with-credentials", {
+                  body: { test: true },
+                })
+                console.log("🧪 Test result:", { data, error })
+                alert(`Test result: ${error ? `Error: ${error.message}` : "Function accessible!"}`)
+              } catch (e: any) {
+                console.error("🧪 Test failed:", e)
+                alert(`Test failed: ${e.message}`)
+              }
+            }}
+            className="border-[#1E3A5F] text-gray-300 hover:bg-[#1E3A5F]/20"
+          >
+            Test Edge Function
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* User Management */}
       <Card className="bg-[#0F1B2E] border-[#1E3A5F]/30">

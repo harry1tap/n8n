@@ -8,17 +8,19 @@
 
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co /* ← set NEXT_PUBLIC_SUPABASE_URL */"
+/* ------------------------------------------------------------------
+   If the NEXT_PUBLIC_ variables are missing (e.g. in a preview build)
+   we fall back to harmless placeholders so createClient doesn’t throw.
+------------------------------------------------------------------ */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co"
 
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "public-anon-key /* ← set NEXT_PUBLIC_SUPABASE_ANON_KEY */"
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "public-anon-key"
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   // eslint-disable-next-line no-console
   console.warn(
     "[Supabase] Environment variables missing – using placeholders. " +
-      "Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY for a real connection.",
+      "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY for a real connection.",
   )
 }
 

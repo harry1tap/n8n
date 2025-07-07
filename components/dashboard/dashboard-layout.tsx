@@ -1,30 +1,27 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "./dashboard-sidebar"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole")
-    if (!role) {
+    if (!loading && !user) {
       router.push("/")
-      return
     }
-    setUserRole(role)
-  }, [router])
+  }, [user, loading, router])
 
-  if (!userRole) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0B1426] flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -32,11 +29,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     )
   }
 
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-[#0B1426]">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <DashboardSidebar userRole={userRole} />
+          <DashboardSidebar user={user} />
           <main className="flex-1 min-w-0 overflow-hidden">
             <div className="h-full overflow-auto">
               <div className="p-6 lg:p-8">

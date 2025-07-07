@@ -14,22 +14,27 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
-import { FolderOpen, Home, LogOut, Settings, PenTool } from "lucide-react"
+import { FolderOpen, Home, LogOut, Settings, PenTool, User } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import Image from "next/image"
 
 interface DashboardSidebarProps {
-  userRole: string
+  user: SupabaseUser
 }
 
-export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
+export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { signOut } = useAuth()
 
-  const handleLogout = () => {
-    localStorage.removeItem("userRole")
-    localStorage.removeItem("userEmail")
+  const handleLogout = async () => {
+    await signOut()
     router.push("/")
   }
+
+  // Determine user role from user metadata or email
+  const userRole = user.user_metadata?.role || (user.email?.includes("admin") ? "admin" : "staff")
 
   const menuItems = [
     {
@@ -98,6 +103,17 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-[#1E3A5F]/30 bg-[#0B1426]">
+        <div className="mb-4 p-3 bg-[#1E3A5F]/20 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#2563EB] rounded-full flex items-center justify-center">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.email}</p>
+              <p className="text-xs text-gray-400 capitalize">{userRole}</p>
+            </div>
+          </div>
+        </div>
         <Button
           onClick={handleLogout}
           variant="ghost"

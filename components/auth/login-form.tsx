@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, LogIn } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
 import Image from "next/image"
 
 export function LoginForm() {
@@ -18,6 +18,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const { signIn } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,19 +26,14 @@ export function LoginForm() {
     setIsLoading(true)
     setError("")
 
-    // Simulate authentication
-    setTimeout(() => {
-      if (email && password) {
-        // Store user role in localStorage for demo purposes
-        const userRole = email.includes("admin") ? "admin" : "staff"
-        localStorage.setItem("userRole", userRole)
-        localStorage.setItem("userEmail", email)
-        router.push("/dashboard")
-      } else {
-        setError("Please enter valid credentials")
-      }
+    const { error } = await signIn(email, password)
+
+    if (error) {
+      setError(error.message)
       setIsLoading(false)
-    }, 1000)
+    } else {
+      router.push("/dashboard")
+    }
   }
 
   return (
@@ -114,9 +110,9 @@ export function LoginForm() {
           </Button>
         </form>
         <div className="mt-6 text-center text-sm text-gray-300 bg-[#1E3A5F]/20 rounded-lg p-4">
-          <strong>Demo Access:</strong>
+          <strong>Need Access?</strong>
           <br />
-          Use any email (admin@skywide.com for admin access)
+          Contact your administrator to create your account
         </div>
       </CardContent>
     </Card>
